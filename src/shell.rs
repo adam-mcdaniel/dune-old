@@ -8,6 +8,13 @@ use std::fs::{read_dir, rename};
 use dirs::home_dir;
 use std::path::PathBuf;
 use std::process::exit;
+use crossterm::{terminal, ClearType};
+
+
+fn to_string(path: &PathBuf) -> String {
+    path.to_str().unwrap().to_string()
+}
+
 
 pub struct Shell {
     pub directory: PathBuf,
@@ -24,13 +31,13 @@ impl Shell {
 
     pub fn run(&mut self) {
         loop {
-            let command: String = input()
-                .msg(">>> ")
-                .get();
+            print!("{}$ ", to_string(&self.directory));
+            let command: String = input().get();
 
             match program().parse(&command) {
                 Ok(v) => {
                     v.execute(self);
+                    self.clear_stack();
                 },
                 Err(e) => println!("Error: {:?}", e)
             };
@@ -42,10 +49,7 @@ impl Shell {
     }
 
     pub fn wd(&self) {
-        println!(
-            "{:?}",
-            self.directory.clone()
-        );
+        println!("{}", to_string(&self.directory));
     }
 
     pub fn mv(&self, old: &str, new: &str) {
@@ -94,6 +98,10 @@ fn machine() -> Machine {
         Some(v) => v,
         None => Value::string("")
     });}, "echo");
+    add_fn(m, |_| {
+        let mut terminal = terminal();
+        terminal.clear(ClearType::All);
+    }, "clear");
     add_fn(m, |m| { m.push(Value::tree()); }, "dict");
 
     m.clone()
