@@ -1,6 +1,5 @@
 extern crate dune;
-use dune::{program, Error, Execute, Shell};
-
+use dune::{Error, Shell};
 
 fn main() -> Result<(), Error> {
     Shell::new().run();

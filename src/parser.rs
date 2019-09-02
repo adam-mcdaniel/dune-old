@@ -9,7 +9,7 @@ use honeycomb::{
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
-use crate::tokens::{Expr, FnCall, Identifier, Literal, Name, Suite, Value, Builtin};
+use crate::tokens::{Builtin, Expr, FnCall, Identifier, Literal, Name, Suite, Value};
 
 /// This parses a string literal
 pub fn string_literal() -> Parser<Literal> {
@@ -28,19 +28,27 @@ pub fn literal() -> Parser<Value> {
 
 /// This matches a simple identifier
 pub fn builtin() -> Parser<Value> {
-    ident().is() >> (
-        (seq_no_ws("ls") - |_| Builtin::List)
+    ((seq_no_ws("ls") - |_| Builtin::List)
         | (seq_no_ws("mv") - |_| Builtin::Move)
         | (seq_no_ws("cd") - |_| Builtin::ChangeDir)
         | (seq_no_ws("rm") - |_| Builtin::Remove)
+        | (seq_no_ws("mkdir") - |_| Builtin::MakeDir)
+        | (seq_no_ws("mkf") - |_| Builtin::MakeFile)
         | (seq_no_ws("pwd") - |_| Builtin::WorkingDir)
-        | (seq_no_ws("exit") - |_| Builtin::Exit)
-    ) - Value::Builtin
+        | (seq_no_ws("exit") - |_| Builtin::Exit))
+        - Value::Builtin
 }
 
 /// This matches a simple identifier
 pub fn ident() -> Parser<Identifier> {
     ((space() >> identifier() << space()) - Identifier) % "an identifier"
+}
+
+/// This matches a value, succeeded by [] enclosed values
+pub fn index_name(values: Parser<Value>) -> Parser<(Box<Value>, Vec<Value>)> {
+    ((values & ((seq_no_ws("[") >> rec(value) << seq_no_ws("]")) * (1..)))
+        - |(head, indices)| (Box::new(head), indices))
+        % "a value followed by one or more indices"
 }
 
 /// This matches a value, succeeded by dot separated identifiers
@@ -62,7 +70,8 @@ pub fn name() -> Parser<Name> {
         // 1) group
         // 2) literal
         // 3) identifier
-        // Accept an identifier
+        | (index_name(group() | literal() | (ident() - Name::Name - Value::Name))
+            - |d| Name::IndexName(d.0, d.1))
         | (ident() - Name::Name))
         % "a dotted name, an indexed value, or an identifier"
 }
@@ -74,15 +83,14 @@ pub fn fncall() -> Parser<Value> {
     // 2) group
     // The arguments can be () enclosed and comma separated values
     // there can be 0 or more values.
-    ((((builtin() | (name() - Value::Name) | rec(group)) & array("(", rec(value), ")"))
+    ((((builtin() | (name() - Value::Name) | rec(group)) & (rec(value) * (1..)))
         - |call_data: (Value, Vec<Value>)| {
             Value::FnCall(FnCall(Box::new(call_data.0), call_data.1))
         })
-    | ((((builtin() | (name() - Value::Name) | rec(group)) & (rec(value) * (1..)))
-        - |call_data: (Value, Vec<Value>)| {
-            Value::FnCall(FnCall(Box::new(call_data.0), call_data.1))
-        }))
-    )
+        | (((builtin() | (name() - Value::Name) | rec(group)) & array("(", rec(value), ")"))
+            - |call_data: (Value, Vec<Value>)| {
+                Value::FnCall(FnCall(Box::new(call_data.0), call_data.1))
+            }))
         % "a value followed by comma arguments"
 }
 

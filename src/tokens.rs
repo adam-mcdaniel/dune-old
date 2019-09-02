@@ -1,4 +1,3 @@
-use xmachine::*;
 use crate::shell::Shell;
 
 #[derive(Debug)]
@@ -37,7 +36,12 @@ impl Execute for FnCall {
             arg.execute(shell)?;
         }
         function.execute(shell)?;
-        shell.machine.call();
+
+        if let Value::Builtin(_) = (*function).clone() {
+        } else {
+            shell.machine.call();
+        }
+
         Ok(())
     }
 }
@@ -60,45 +64,56 @@ pub enum Builtin {
     ChangeDir,
     Move,
     Remove,
+    MakeDir,
+    MakeFile,
     WorkingDir,
-    Exit
+    Exit,
 }
 
 impl Execute for Builtin {
     fn execute(&self, shell: &mut Shell) -> Result<(), Error> {
         match self {
             Self::List => {
-                let arg = shell.machine.pop()
-                                .map(|v| (*v).clone().to_string());
+                let arg = shell.machine.pop().map(|v| (*v).clone().to_string());
                 shell.ls(arg);
-            },
+            }
             Self::ChangeDir => {
                 let arg = shell.machine.get_arg::<String>();
                 shell.cd(&arg);
-            },
+            }
             Self::Move => {
                 let old = shell.machine.get_arg::<String>();
                 let new = shell.machine.get_arg::<String>();
                 shell.mv(&old, &new);
-            },
+            }
+            Self::Remove => {
+                let path = shell.machine.get_arg::<String>();
+                shell.rm(&path);
+            }
+            Self::MakeDir => {
+                let path = shell.machine.get_arg::<String>();
+                shell.mkdir(&path);
+            }
+            Self::MakeFile => {
+                let path = shell.machine.get_arg::<String>();
+                shell.mkf(&path);
+            }
             Self::WorkingDir => {
                 shell.wd();
-            },
+            }
             Self::Exit => shell.exit(),
-            _ => {}
         };
 
         Ok(())
     }
 }
 
-
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Value {
     Name(Name),
     Literal(Literal),
     FnCall(FnCall),
-    Builtin(Builtin)
+    Builtin(Builtin),
 }
 
 impl Execute for Value {
@@ -116,6 +131,7 @@ impl Execute for Value {
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Name {
     Name(Identifier),
+    IndexName(Box<Value>, Vec<Value>),
     DotName(Box<Value>, Vec<Identifier>),
 }
 
@@ -128,6 +144,13 @@ impl Execute for Name {
                 for ident in identifiers {
                     let Identifier(name) = ident;
                     shell.machine.push(xmachine::Value::string(name));
+                    shell.machine.index();
+                }
+            }
+            Self::IndexName(head, values) => {
+                head.execute(shell)?;
+                for value in values {
+                    value.execute(shell)?;
                     shell.machine.index();
                 }
             }
