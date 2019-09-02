@@ -14,7 +14,6 @@ fn to_string(path: &PathBuf) -> String {
 }
 
 pub struct Shell {
-    pub history: Vec<String>,
     pub directory: PathBuf,
     pub machine: Machine,
 }
@@ -22,7 +21,6 @@ pub struct Shell {
 impl Shell {
     pub fn new() -> Self {
         Self {
-            history: vec![],
             directory: home_dir().unwrap(),
             machine: machine(),
         }
@@ -43,7 +41,6 @@ impl Shell {
 
             match program().parse(&command) {
                 Ok(v) => {
-                    self.history.push(command);
                     match v.execute(self) {
                         _ => {}
                     };
@@ -349,6 +346,26 @@ fn machine() -> Machine {
             m.push(Value::string(input::<String>().get().trim()));
         },
         "input",
+    );
+    add_fn(
+        m,
+        |m| {
+            let command = match m.pop() {Some(v)=>(*v).clone(), _=>return};
+
+
+            match program().parse(&format!("{}", command)) {
+                Ok(v) => {
+                    let shell = &mut Shell::new();
+                    match v.execute(shell) {
+                        _ => {}
+                    };
+                    shell.print_stack();
+                    shell.clear_stack();
+                }
+                Err(e) => println!("Error: {:?}", e),
+            };
+        },
+        "eval",
     );
 
     m.clone()
