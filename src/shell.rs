@@ -165,7 +165,6 @@ impl Shell {
     }
 }
 
-
 fn add_fn(m: &mut Machine, function: fn(&mut Machine) -> (), name: &str) {
     m.push(Value::function(function, &m));
     m.push(Value::string(name));

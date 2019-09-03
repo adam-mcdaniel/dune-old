@@ -114,7 +114,7 @@ pub enum Value {
     Literal(Literal),
     FnCall(FnCall),
     Builtin(Builtin),
-    Function(Function)
+    Function(Function),
 }
 
 impl Execute for Value {
@@ -212,7 +212,7 @@ impl Execute for Expr {
                 }
             }
             Self::FunctionDef(func_def) => func_def.execute(shell)?,
-            Self::Value(v) => v.execute(shell)?
+            Self::Value(v) => v.execute(shell)?,
         };
         Ok(())
     }
@@ -235,15 +235,11 @@ impl Execute for Suite {
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub struct FunctionDef(pub Name, pub Function);
 
-
 impl Execute for FunctionDef {
     fn execute(&self, shell: &mut Shell) -> Result<(), Error> {
         let FunctionDef(name, func) = self;
 
-        Expr::Assignment(
-            name.clone(),
-            Value::Function(func.clone())
-        ).execute(shell)?;
+        Expr::Assignment(name.clone(), Value::Function(func.clone())).execute(shell)?;
 
         Ok(())
     }
@@ -255,18 +251,23 @@ pub struct Function(pub Vec<Identifier>, pub Suite);
 impl Execute for Function {
     fn execute(&self, shell: &mut Shell) -> Result<(), Error> {
         let Function(args, suite) = self.clone();
-        shell.machine.push(xmachine::Value::function(move |m| {
-            let shell = &mut Shell::new();
-            shell.machine.stack = m.stack.clone();
-            shell.machine.registers = m.registers.clone();
-            for arg in args.clone() {
-                let Identifier(store) = arg;
-                shell.machine.push(xmachine::Value::string(store));
-                shell.machine.store();
-            }
-            match suite.execute(shell) { _=> {} };
-            m.stack = shell.machine.stack.clone();
-        }, &shell.machine));
+        shell.machine.push(xmachine::Value::function(
+            move |m| {
+                let shell = &mut Shell::new();
+                shell.machine.stack = m.stack.clone();
+                shell.machine.registers = m.registers.clone();
+                for arg in args.clone() {
+                    let Identifier(store) = arg;
+                    shell.machine.push(xmachine::Value::string(store));
+                    shell.machine.store();
+                }
+                match suite.execute(shell) {
+                    _ => {}
+                };
+                m.stack = shell.machine.stack.clone();
+            },
+            &shell.machine,
+        ));
 
         Ok(())
     }

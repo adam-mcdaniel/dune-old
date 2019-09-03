@@ -9,7 +9,9 @@ use honeycomb::{
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
-use crate::tokens::{Builtin, Expr, FnCall, Identifier, Literal, Name, Suite, Value, Function, FunctionDef};
+use crate::tokens::{
+    Builtin, Expr, FnCall, Function, FunctionDef, Identifier, Literal, Name, Suite, Value,
+};
 
 /// This parses a string literal
 pub fn string_literal() -> Parser<Literal> {
