@@ -4,11 +4,9 @@ use crate::LOGO;
 use read_input::prelude::*;
 use xmachine::{Machine, Ref, Value};
 
-use crossterm::{terminal, ClearType};
 use dirs::home_dir;
 use std::fs::{create_dir_all, read_dir, remove_dir_all, remove_file, rename, write};
 use std::path::PathBuf;
-use std::process::exit;
 
 fn to_string(path: &PathBuf) -> String {
     path.to_str().unwrap().to_string()
@@ -18,6 +16,7 @@ fn to_string(path: &PathBuf) -> String {
 pub struct Shell {
     pub directory: PathBuf,
     pub machine: Machine,
+    pub is_done: bool
 }
 
 impl Shell {
@@ -25,11 +24,12 @@ impl Shell {
         Self {
             directory: home_dir().unwrap(),
             machine: machine(),
+            is_done: false
         }
     }
 
     pub fn run(&mut self) {
-        loop {
+        while !self.is_done {
             print!("{}$ ", to_string(&self.directory));
             let mut command = String::from("");
             let mut user_input = input::<String>().get();
@@ -161,7 +161,7 @@ impl Shell {
     }
 
     pub fn exit(&mut self) {
-        exit(0);
+        self.is_done = true;
     }
 }
 
@@ -210,10 +210,7 @@ fn machine() -> Machine {
     add_fn(
         m,
         |_| {
-            let terminal = terminal();
-            match terminal.clear(ClearType::All) {
-                _ => {}
-            };
+            println!("{}", "\n".repeat(200));
         },
         "clear",
     );
