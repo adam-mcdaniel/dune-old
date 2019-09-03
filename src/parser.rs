@@ -9,7 +9,7 @@ use honeycomb::{
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 
-use crate::tokens::{Builtin, Expr, FnCall, Identifier, Literal, Name, Suite, Value};
+use crate::tokens::{Builtin, Expr, FnCall, Identifier, Literal, Name, Suite, Value, Function, FunctionDef};
 
 /// This parses a string literal
 pub fn string_literal() -> Parser<Literal> {
@@ -83,7 +83,7 @@ pub fn fncall() -> Parser<Value> {
     // 2) group
     // The arguments can be () enclosed and comma separated values
     // there can be 0 or more values.
-    ((((builtin() | (name() - Value::Name) | rec(group)) & (rec(value) * (1..)))
+    (((builtin() & (rec(value) * (1..)))
         - |call_data: (Value, Vec<Value>)| {
             Value::FnCall(FnCall(Box::new(call_data.0), call_data.1))
         })
@@ -92,6 +92,32 @@ pub fn fncall() -> Parser<Value> {
                 Value::FnCall(FnCall(Box::new(call_data.0), call_data.1))
             }))
         % "a value followed by comma arguments"
+}
+
+/// This represents an anonymous function literal.
+/// A function literal looks like the following:
+///
+/// `fn(a, b, c) {}`
+///
+/// An anonymous function does not have a name and
+/// is basically a lambda expression.
+pub fn function() -> Parser<Function> {
+    (seq_no_ws("fn") >> (array("(", ident(), ")") & suite()))
+        - |(params, suite)| Function(params, suite)
+}
+
+/// This represents a function definition.
+/// A function definition is a function with a name:
+///
+/// `fn sum(a, b) {}`
+///
+/// It assigns the function value to the name of the
+/// function definition within that scope.
+pub fn function_def() -> Parser<FunctionDef> {
+    let body = array("(", ident(), ")") & rec(suite);
+    ((seq_no_ws("fn") >> name() & body)
+        - |(n, (params, suite))| FunctionDef(n, Function(params, suite)))
+        % "a valid function definition"
 }
 
 /// This matches a grouped value, any () enclosed value
@@ -111,7 +137,7 @@ pub fn flat_value() -> Parser<Value> {
 pub fn recursive_value() -> Parser<Value> {
     // These values are POTENTIALLY recursive
     // They require the use of the `value` parser
-    rec(fncall) | builtin() | (name() - Value::Name) | rec(group)
+    (function() - Value::Function) | rec(fncall) | builtin() | (name() - Value::Name) | rec(group)
 }
 
 /// This represents an atomic value
@@ -153,6 +179,7 @@ pub fn expr() -> Parser<Expr> {
         >> (((assignment() << opt(seq_no_ws(";"))) % "a valid assignment")
             | while_loop()
             | if_then_else()
+            | (function_def() - Expr::FunctionDef)
             | (((value() - Expr::Value) << opt(seq_no_ws(";"))) % "a value"))
         << opt(comment() * (..))
 }
