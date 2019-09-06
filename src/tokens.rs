@@ -63,9 +63,11 @@ pub enum Builtin {
     List,
     ChangeDir,
     Move,
+    Clear,
     Remove,
     MakeDir,
     MakeFile,
+    ShellOut,
     WorkingDir,
     Exit,
 }
@@ -73,6 +75,9 @@ pub enum Builtin {
 impl Execute for Builtin {
     fn execute(&self, shell: &mut Shell) -> Result<(), Error> {
         match self {
+            Self::Clear => {
+                shell.clear();
+            }
             Self::List => {
                 let arg = shell.machine.pop().map(|v| (*v).clone().to_string());
                 shell.ls(arg);
@@ -97,6 +102,10 @@ impl Execute for Builtin {
             Self::MakeFile => {
                 let path = shell.machine.get_arg::<String>();
                 shell.mkf(&path);
+            }
+            Self::ShellOut => {
+                let arg = shell.machine.get_arg::<String>();
+                shell.sh(&arg);
             }
             Self::WorkingDir => {
                 shell.wd();

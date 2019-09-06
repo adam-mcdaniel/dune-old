@@ -3,6 +3,7 @@ name = "dune"
 version = "0.1.0"
 authors = ["adam-mcdaniel <adam.mcdanie17@gmail.com>"]
 edition = "2018"
+description = "A cross platform, high powered shell"
 
 [[bin]]
 name = "dune"

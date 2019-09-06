@@ -30,14 +30,16 @@ pub fn literal() -> Parser<Value> {
 
 /// This matches a simple identifier
 pub fn builtin() -> Parser<Value> {
-    ((seq_no_ws("ls") - |_| Builtin::List)
+    (((seq_no_ws("ls") | seq_no_ws("dir")) - |_| Builtin::List)
+        | ((seq_no_ws("clear") | seq_no_ws("cls")) - |_| Builtin::Clear)
+        | ((seq_no_ws("sh") | seq_no_ws("cmd")) - |_| Builtin::ShellOut)
         | (seq_no_ws("mv") - |_| Builtin::Move)
         | (seq_no_ws("cd") - |_| Builtin::ChangeDir)
         | (seq_no_ws("rm") - |_| Builtin::Remove)
         | (seq_no_ws("mkdir") - |_| Builtin::MakeDir)
-        | (seq_no_ws("mkf") - |_| Builtin::MakeFile)
-        | (seq_no_ws("pwd") - |_| Builtin::WorkingDir)
-        | (seq_no_ws("exit") - |_| Builtin::Exit))
+        | ((seq_no_ws("mkf") | seq_no_ws("touch")) - |_| Builtin::MakeFile)
+        | ((seq_no_ws("pwd") | seq_no_ws("cwd")) - |_| Builtin::WorkingDir)
+        | ((seq_no_ws("exit") | seq_no_ws("quit") | seq_no_ws("bye")) - |_| Builtin::Exit))
         - Value::Builtin
 }
 

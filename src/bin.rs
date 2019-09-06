@@ -1,8 +1,8 @@
 extern crate dune;
-use dune::{Error, Shell, LOGO};
+use dune::{Error, Shell, INFO, LOGO};
 
 fn main() -> Result<(), Error> {
-    println!("{}", LOGO);
+    println!("{}\n{}", INFO, LOGO);
     Shell::new().run();
     Ok(())
 }

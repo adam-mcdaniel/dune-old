@@ -1,10 +1,11 @@
 use crate::parser::program;
 use crate::tokens::Execute;
-use crate::LOGO;
+use crate::{LOGO, INFO};
 use read_input::prelude::*;
 use xmachine::{Machine, Ref, Value};
 
 use dirs::home_dir;
+use std::process::{Command, Stdio};
 use std::fs::{create_dir_all, read_dir, remove_dir_all, remove_file, rename, write};
 use std::path::PathBuf;
 
@@ -160,6 +161,21 @@ impl Shell {
         };
     }
 
+    pub fn sh(&mut self, cmd: &str) {
+        let components = cmd.split_whitespace().collect::<Vec<&str>>();
+        if !components.is_empty() {
+            match Command::new(components[0])
+                .args(components[1..].iter())
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .output() { _ => {} };
+        }
+    }
+
+    pub fn clear(&mut self) {
+        println!("{}", "\n".repeat(200));
+    }
+
     pub fn exit(&mut self) {
         self.is_done = true;
     }
@@ -206,13 +222,6 @@ fn machine() -> Machine {
             );
         },
         "println",
-    );
-    add_fn(
-        m,
-        |_| {
-            println!("{}", "\n".repeat(200));
-        },
-        "clear",
     );
     add_fn(
         m,
@@ -419,13 +428,31 @@ fn machine() -> Machine {
     add_fn(
         m,
         |m| {
+            println!("{}", INFO);
             println!("{}", m);
         },
         "help",
     );
     add_fn(
         m,
+        |m| {
+            println!("{}", INFO);
+            println!("{}", m);
+        },
+        "debug",
+    );
+    add_fn(
+        m,
+        |m| {
+            println!("{}", INFO);
+            println!("{}", m);
+        },
+        "info",
+    );
+    add_fn(
+        m,
         |_| {
+            println!("{}", INFO);
             println!("{}", LOGO);
         },
         "logo",
