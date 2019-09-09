@@ -3,6 +3,7 @@ name = "dune"
 version = "0.1.0"
 authors = ["adam-mcdaniel <adam.mcdanie17@gmail.com>"]
 edition = "2018"
+description = "A cross platform, high powered shell"
 
 [[bin]]
 name = "dune"
@@ -10,7 +11,6 @@ path = "src/bin.rs"
 
 [dependencies]
 honeycomb = "0.1.4"
-xmachine = "0.1.9"
+xmachine = "0.1.11"
 read_input = "0.8"
 dirs = "2.0"
-crossterm = "^0.10"

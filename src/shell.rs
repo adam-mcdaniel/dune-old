@@ -1,21 +1,23 @@
 use crate::parser::program;
 use crate::tokens::Execute;
+use crate::{LOGO, INFO};
 use read_input::prelude::*;
-use xmachine::{Machine, Value, Ref};
+use xmachine::{Machine, Ref, Value};
 
-use crossterm::{terminal, ClearType};
 use dirs::home_dir;
+use std::process::{Command, Stdio};
 use std::fs::{create_dir_all, read_dir, remove_dir_all, remove_file, rename, write};
 use std::path::PathBuf;
-use std::process::exit;
 
 fn to_string(path: &PathBuf) -> String {
     path.to_str().unwrap().to_string()
 }
 
+#[derive(Clone)]
 pub struct Shell {
     pub directory: PathBuf,
     pub machine: Machine,
+    pub is_done: bool
 }
 
 impl Shell {
@@ -23,11 +25,12 @@ impl Shell {
         Self {
             directory: home_dir().unwrap(),
             machine: machine(),
+            is_done: false
         }
     }
 
     pub fn run(&mut self) {
-        loop {
+        while !self.is_done {
             print!("{}$ ", to_string(&self.directory));
             let mut command = String::from("");
             let mut user_input = input::<String>().get();
@@ -138,7 +141,9 @@ impl Shell {
         match read_dir(directory) {
             Ok(dir) => {
                 for name in dir {
-                    result.push(Value::string(name.unwrap().path().file_name().unwrap().to_str().unwrap()));
+                    result.push(Value::string(
+                        name.unwrap().path().file_name().unwrap().to_str().unwrap(),
+                    ));
                 }
             }
             _ => {}
@@ -156,8 +161,23 @@ impl Shell {
         };
     }
 
+    pub fn sh(&mut self, cmd: &str) {
+        let components = cmd.split_whitespace().collect::<Vec<&str>>();
+        if !components.is_empty() {
+            match Command::new(components[0])
+                .args(components[1..].iter())
+                .stdin(Stdio::inherit())
+                .stdout(Stdio::inherit())
+                .output() { _ => {} };
+        }
+    }
+
+    pub fn clear(&mut self) {
+        println!("{}", "\n".repeat(200));
+    }
+
     pub fn exit(&mut self) {
-        exit(0);
+        self.is_done = true;
     }
 }
 
@@ -180,6 +200,19 @@ fn machine() -> Machine {
     add_fn(
         m,
         |m| {
+            print!(
+                "{}",
+                match m.pop() {
+                    Some(v) => v,
+                    None => Value::string(""),
+                }
+            );
+        },
+        "print",
+    );
+    add_fn(
+        m,
+        |m| {
             println!(
                 "{}",
                 match m.pop() {
@@ -188,17 +221,7 @@ fn machine() -> Machine {
                 }
             );
         },
-        "echo",
-    );
-    add_fn(
-        m,
-        |_| {
-            let terminal = terminal();
-            match terminal.clear(ClearType::All) {
-                _ => {}
-            };
-        },
-        "clear",
+        "println",
     );
     add_fn(
         m,
@@ -228,7 +251,10 @@ fn machine() -> Machine {
     add_fn(
         m,
         |m| {
-            let a = match m.pop() {Some(v)=>(*v).clone(), _=>return};
+            let a = match m.pop() {
+                Some(v) => (*v).clone(),
+                _ => return,
+            };
             m.return_value(!a);
         },
         "not",
@@ -290,8 +316,14 @@ fn machine() -> Machine {
     add_fn(
         m,
         |m| {
-            let a = match m.pop() {Some(v)=>(*v).clone(), _=>return};
-            let b = match m.pop() {Some(v)=>(*v).clone(), _=>return};
+            let a = match m.pop() {
+                Some(v) => (*v).clone(),
+                _ => return,
+            };
+            let b = match m.pop() {
+                Some(v) => (*v).clone(),
+                _ => return,
+            };
             m.return_value(a + b)
         },
         "add",
@@ -299,8 +331,14 @@ fn machine() -> Machine {
     add_fn(
         m,
         |m| {
-            let a = match m.pop() {Some(v)=>(*v).clone(), _=>return};
-            let b = match m.pop() {Some(v)=>(*v).clone(), _=>return};
+            let a = match m.pop() {
+                Some(v) => (*v).clone(),
+                _ => return,
+            };
+            let b = match m.pop() {
+                Some(v) => (*v).clone(),
+                _ => return,
+            };
             m.return_value(a - b)
         },
         "sub",
@@ -308,8 +346,14 @@ fn machine() -> Machine {
     add_fn(
         m,
         |m| {
-            let a = match m.pop() {Some(v)=>(*v).clone(), _=>return};
-            let b = match m.pop() {Some(v)=>(*v).clone(), _=>return};
+            let a = match m.pop() {
+                Some(v) => (*v).clone(),
+                _ => return,
+            };
+            let b = match m.pop() {
+                Some(v) => (*v).clone(),
+                _ => return,
+            };
             m.return_value(a * b)
         },
         "mul",
@@ -317,8 +361,14 @@ fn machine() -> Machine {
     add_fn(
         m,
         |m| {
-            let a = match m.pop() {Some(v)=>(*v).clone(), _=>return};
-            let b = match m.pop() {Some(v)=>(*v).clone(), _=>return};
+            let a = match m.pop() {
+                Some(v) => (*v).clone(),
+                _ => return,
+            };
+            let b = match m.pop() {
+                Some(v) => (*v).clone(),
+                _ => return,
+            };
             m.return_value(a / b)
         },
         "div",
@@ -326,8 +376,14 @@ fn machine() -> Machine {
     add_fn(
         m,
         |m| {
-            let a = match m.pop() {Some(v)=>(*v).clone(), _=>return};
-            let b = match m.pop() {Some(v)=>(*v).clone(), _=>return};
+            let a = match m.pop() {
+                Some(v) => (*v).clone(),
+                _ => return,
+            };
+            let b = match m.pop() {
+                Some(v) => (*v).clone(),
+                _ => return,
+            };
             m.return_value(a % b)
         },
         "rem",
@@ -350,8 +406,10 @@ fn machine() -> Machine {
     add_fn(
         m,
         |m| {
-            let command = match m.pop() {Some(v)=>(*v).clone(), _=>return};
-
+            let command = match m.pop() {
+                Some(v) => (*v).clone(),
+                _ => return,
+            };
 
             match program().parse(&format!("{}", command)) {
                 Ok(v) => {
@@ -366,6 +424,38 @@ fn machine() -> Machine {
             };
         },
         "eval",
+    );
+    add_fn(
+        m,
+        |m| {
+            println!("{}", INFO);
+            println!("{}", m);
+        },
+        "help",
+    );
+    add_fn(
+        m,
+        |m| {
+            println!("{}", INFO);
+            println!("{}", m);
+        },
+        "debug",
+    );
+    add_fn(
+        m,
+        |m| {
+            println!("{}", INFO);
+            println!("{}", m);
+        },
+        "info",
+    );
+    add_fn(
+        m,
+        |_| {
+            println!("{}", INFO);
+            println!("{}", LOGO);
+        },
+        "logo",
     );
 
     m.clone()

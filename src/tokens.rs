@@ -63,9 +63,11 @@ pub enum Builtin {
     List,
     ChangeDir,
     Move,
+    Clear,
     Remove,
     MakeDir,
     MakeFile,
+    ShellOut,
     WorkingDir,
     Exit,
 }
@@ -73,6 +75,9 @@ pub enum Builtin {
 impl Execute for Builtin {
     fn execute(&self, shell: &mut Shell) -> Result<(), Error> {
         match self {
+            Self::Clear => {
+                shell.clear();
+            }
             Self::List => {
                 let arg = shell.machine.pop().map(|v| (*v).clone().to_string());
                 shell.ls(arg);
@@ -98,6 +103,10 @@ impl Execute for Builtin {
                 let path = shell.machine.get_arg::<String>();
                 shell.mkf(&path);
             }
+            Self::ShellOut => {
+                let arg = shell.machine.get_arg::<String>();
+                shell.sh(&arg);
+            }
             Self::WorkingDir => {
                 shell.wd();
             }
@@ -114,6 +123,7 @@ pub enum Value {
     Literal(Literal),
     FnCall(FnCall),
     Builtin(Builtin),
+    Function(Function),
 }
 
 impl Execute for Value {
@@ -123,6 +133,7 @@ impl Execute for Value {
             Self::Literal(literal) => literal.execute(shell)?,
             Self::FnCall(call) => call.execute(shell)?,
             Self::Builtin(call) => call.execute(shell)?,
+            Self::Function(func) => func.execute(shell)?,
         };
         Ok(())
     }
@@ -164,6 +175,7 @@ pub enum Expr {
     Assignment(Name, Value),
     WhileLoop(Value, Suite),
     IfThenElse(Value, Suite, Suite),
+    FunctionDef(FunctionDef),
     Value(Value),
 }
 
@@ -208,6 +220,7 @@ impl Execute for Expr {
                     else_body.execute(shell)?;
                 }
             }
+            Self::FunctionDef(func_def) => func_def.execute(shell)?,
             Self::Value(v) => v.execute(shell)?,
         };
         Ok(())
@@ -223,6 +236,47 @@ impl Execute for Suite {
         for expr in exprs {
             expr.execute(shell)?;
         }
+
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub struct FunctionDef(pub Name, pub Function);
+
+impl Execute for FunctionDef {
+    fn execute(&self, shell: &mut Shell) -> Result<(), Error> {
+        let FunctionDef(name, func) = self;
+
+        Expr::Assignment(name.clone(), Value::Function(func.clone())).execute(shell)?;
+
+        Ok(())
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
+pub struct Function(pub Vec<Identifier>, pub Suite);
+
+impl Execute for Function {
+    fn execute(&self, shell: &mut Shell) -> Result<(), Error> {
+        let Function(args, suite) = self.clone();
+        shell.machine.push(xmachine::Value::function(
+            move |m| {
+                let shell = &mut Shell::new();
+                shell.machine.stack = m.stack.clone();
+                shell.machine.registers = m.registers.clone();
+                for arg in args.clone() {
+                    let Identifier(store) = arg;
+                    shell.machine.push(xmachine::Value::string(store));
+                    shell.machine.store();
+                }
+                match suite.execute(shell) {
+                    _ => {}
+                };
+                m.stack = shell.machine.stack.clone();
+            },
+            &shell.machine,
+        ));
 
         Ok(())
     }
