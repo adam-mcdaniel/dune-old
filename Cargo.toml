@@ -4,6 +4,11 @@ version = "0.1.0"
 authors = ["adam-mcdaniel <adam.mcdanie17@gmail.com>"]
 edition = "2018"
 description = "A cross platform, high powered shell"
+license = "GPL-3.0"
+readme = "README.md"
+documentation = "https://docs.rs/dune"
+homepage = "https://github.com/adam-mcdaniel/dune"
+repository = "https://github.com/adam-mcdaniel/dune"
 
 [[bin]]
 name = "dune"
